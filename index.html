@@ -83,6 +83,15 @@ table.rp th{background:var(--in)}
 <label>Chiều rộng mái (m)<input id="rw" type="number" step="0.1" value="12"></label>
 <label>Chiều dài dốc mái (m)<input id="rl" type="number" step="0.1" value="8"></label>
 </div></fieldset>
+<fieldset><legend>Kiểu hệ thống</legend><div class="g"><label class="full">Chọn kiểu hệ<select id="sys"><option value="grid">Hòa lưới</option><option value="hyb">Hòa lưới kết hợp lưu trữ</option><option value="off">Lưu trữ độc lập (không lưới)</option></select></label></div></fieldset>
+<fieldset id="batf"><legend>Pin lưu trữ</legend><div class="g">
+<label>Số module pin<input id="bn" type="number" value="10" min="1"></label>
+<label>Dung lượng mỗi module (kWh)<input id="bk" type="number" step="0.01" value="5.12"></label>
+<label>Điện áp pin (V)<input id="bv" type="number" step="0.1" value="51.2"></label>
+<label>Mức xả sâu DoD (%)<input id="bd" type="number" value="90"></label>
+<label>Tải cần cấp (kW)<input id="bl" type="number" step="0.1" value="3"></label>
+<label>Giờ nắng quy đổi (h/ngày)<input id="bs" type="number" step="0.1" value="4"></label>
+</div></fieldset>
 <fieldset><legend>Inverter</legend><div class="g">
 <label>Công suất AC (kW)<input id="pac" type="number" step="0.1" value="10"></label>
 <label>Số MPPT<input id="mn" type="number" value="2" min="1" max="4"></label>
@@ -113,13 +122,13 @@ table.rp th{background:var(--in)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-const IDS=['wp','n','pw','ph','voc','vmp','isc','tc','tilt','rw','rl','pac','mn','vmax','mmin','imax','ns','tmin','thot'];
+const IDS=['wp','n','pw','ph','voc','vmp','isc','tc','tilt','rw','rl','pac','mn','vmax','mmin','imax','ns','tmin','thot','bn','bk','bv','bd','bl','bs'];
 const PAL=['#f2a900','#2e9cca','#d6455d','#4cae6a','#8e6bd1','#e5702a','#17a398','#b5a600'];
 const F=(x,d=0)=>Number(x).toFixed(d);
 
 function read(){
   const v={};IDS.forEach(k=>v[k]=parseFloat($(k).value)||0);
-  v.ori=$('ori').value;
+  v.ori=$('ori').value;v.sys=$('sys').value;
   v.n=Math.max(1,Math.round(v.n));v.ns=Math.max(1,Math.round(v.ns));v.mn=Math.max(1,Math.round(v.mn));
   return v;
 }
@@ -148,6 +157,11 @@ function checks(v,c){
   const ratio=c.kwp/v.pac;
   add(ratio>=0.9&&ratio<=1.4,`Tổng ${F(c.kwp,2)} kWp trên inverter ${F(v.pac,1)} kW, tỉ lệ DC/AC ${F(ratio,2)} (thường chọn 1,0 đến 1,3).`);
   add(new Set(c.sizes).size===1,c.sizes.length===1?'Chỉ có 1 string.':`Các string ${new Set(c.sizes).size===1?'đều':'không đều'} số tấm (${c.sizes.join(' / ')}). Nên chia đều để MPPT làm việc ổn định.`);
+  if(v.sys!=='grid'){
+    const tot=v.bn*v.bk,use=tot*v.bd/100,hrs=v.bl>0?use/v.bl:0,pv=c.kwp*v.bs;
+    add(hrs>=1,`Pin ${v.bn} × ${F(v.bk,2)} kWh = ${F(tot,1)} kWh, dùng được ${F(use,1)} kWh (DoD ${F(v.bd)}%), cấp tải ${F(v.bl,1)} kW được khoảng ${F(hrs,1)} giờ.`);
+    add(pv>=use,`PV ${F(c.kwp,2)} kWp × ${F(v.bs,1)} giờ nắng quy đổi ≈ ${F(pv,1)} kWh/ngày${pv>=use?', đủ nạp đầy pin trong 1 ngày.':', chưa đủ nạp đầy pin trong 1 ngày (cần ít nhất '+F(use,1)+' kWh).'}`);
+  }
   $('ck').innerHTML=out.join('');
 }
 
@@ -236,18 +250,22 @@ function build(v,c){
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(a,0.04,b),[frame,frame,top,frame,frame,frame]);
     mesh.position.set(x,0.1,z);roof.add(mesh);
   }
+  if(v.sys!=='grid'){
+    const bx=new THREE.Mesh(new THREE.BoxGeometry(0.8,1.6,0.5),new THREE.MeshLambertMaterial({color:0x2e7d5b}));bx.position.set(W/2+0.9,0.8,0);dyn.add(bx);
+    const iv=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.7,0.25),new THREE.MeshLambertMaterial({color:0xe5e9ec}));iv.position.set(W/2+0.9,2.0,0);dyn.add(iv);
+  }
   const wd=Math.max(W,D)+4;cam3.t.set(0,H+rise/2,0);cam3.r=Math.max(14,wd*1.5);
   return {cap,show,cols,rows};
 }
 
 /* ---------- Sơ đồ đấu nối ---------- */
 function wiring(v,c){
-  const rowH=56,top=26,H=Math.max(c.sizes.length*rowH+50,230);
-  const ix=640,iw=130,iy=14,ih=H-28;
+  const bat=v.sys!=='grid',rowH=56,top=26,H0=Math.max(c.sizes.length*rowH+50,230),H=H0+(bat?120:0);
+  const ix=640,iw=130,iy=14,ih=H0-28;
   const portY=m=>v.mn===1?iy+ih/2:iy+34+m*(ih-68)/(v.mn-1);
   let s=`<svg viewBox="0 0 1000 ${H}" width="100%" role="img" aria-label="Sơ đồ đấu nối" font-family="system-ui,sans-serif" font-size="12">`;
   s+=`<rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" rx="8" fill="var(--in)" stroke="currentColor" stroke-width="2"/>`;
-  s+=`<text x="${ix+iw/2+18}" y="${iy+ih/2-2}" text-anchor="middle" font-weight="700">Inverter</text><text x="${ix+iw/2+18}" y="${iy+ih/2+14}" text-anchor="middle" fill="var(--mut)">${F(v.pac,1)} kW</text>`;
+  s+=`<text x="${ix+iw/2+18}" y="${iy+ih/2-2}" text-anchor="middle" font-weight="700">Inverter</text><text x="${ix+iw/2+18}" y="${iy+ih/2+14}" text-anchor="middle" fill="var(--mut)">${F(v.pac,1)} kW${v.sys==='grid'?'':v.sys==='hyb'?' Hybrid':' Off-grid'}</text>`;
   for(let m=0;m<v.mn;m++){
     const y=portY(m);
     s+=`<circle cx="${ix}" cy="${y}" r="4" fill="currentColor"/><text x="${ix+9}" y="${y+4}" font-size="11">MPPT${m+1}</text>`;
@@ -260,14 +278,21 @@ function wiring(v,c){
     s+=`<rect x="545" y="${y-9}" width="30" height="18" rx="3" fill="var(--card)" stroke="currentColor"/><text x="560" y="${y+4}" text-anchor="middle" font-size="10">CB DC</text>`;
     s+=`<polyline points="575,${y} 605,${y} 605,${py} ${ix},${py}" fill="none" stroke="${col}" stroke-width="2"/>`;
   });
-  const my=H/2;
+  const mid=H0/2;
+  const acx=(y,t)=>`<line x1="${ix+iw}" y1="${y}" x2="800" y2="${y}" stroke="currentColor" stroke-width="2"/><rect x="800" y="${y-13}" width="50" height="26" rx="4" fill="var(--card)" stroke="currentColor" stroke-width="1.5"/><text x="825" y="${y+4}" text-anchor="middle" font-size="11">CB AC</text><line x1="850" y1="${y}" x2="885" y2="${y}" stroke="currentColor" stroke-width="2"/><rect x="885" y="${y-20}" width="85" height="40" rx="6" fill="var(--card)" stroke="currentColor" stroke-width="1.5"/><text x="927" y="${y+4}" text-anchor="middle" font-size="11">${t}</text>`;
+  let batS='';
+  if(bat){const by=H0+36,cx=ix+iw/2;
+    batS=`<line x1="${cx}" y1="${iy+ih}" x2="${cx}" y2="${by}" stroke="#d6455d" stroke-width="2.5"/><rect x="${cx-17}" y="${H0}" width="34" height="18" rx="3" fill="var(--card)" stroke="currentColor"/><text x="${cx}" y="${H0+13}" text-anchor="middle" font-size="10">CB DC</text><rect x="${ix-20}" y="${by}" width="${iw+40}" height="64" rx="8" fill="var(--in)" stroke="currentColor" stroke-width="2"/><text x="${cx}" y="${by+26}" text-anchor="middle" font-weight="700">Pin lưu trữ</text><text x="${cx}" y="${by+44}" text-anchor="middle" font-size="11" fill="var(--mut)">${v.bn}×${F(v.bk,2)} kWh, ${F(v.bv,1)} V</text>`;}
+  if(v.sys==='off'){s+=acx(mid,'Tải sinh hoạt')+batS;return s+'</svg>';}
+  const my=v.sys==='hyb'?mid-26:mid;
   s+=`<line x1="${ix+iw}" y1="${my}" x2="800" y2="${my}" stroke="currentColor" stroke-width="2"/>`;
   s+=`<rect x="800" y="${my-13}" width="50" height="26" rx="4" fill="var(--card)" stroke="currentColor" stroke-width="1.5"/><text x="825" y="${my+4}" text-anchor="middle" font-size="11">CB AC</text>`;
   s+=`<line x1="850" y1="${my}" x2="885" y2="${my}" stroke="currentColor" stroke-width="2"/>`;
   s+=`<circle cx="903" cy="${my}" r="18" fill="var(--card)" stroke="currentColor" stroke-width="1.5"/><text x="903" y="${my+4}" text-anchor="middle" font-size="11">kWh</text><text x="903" y="${my+34}" text-anchor="middle" font-size="11" fill="var(--mut)">Công tơ 2 chiều</text>`;
   s+=`<line x1="921" y1="${my}" x2="970" y2="${my}" stroke="currentColor" stroke-width="2"/><text x="965" y="${my-10}" text-anchor="end" font-size="11" fill="var(--mut)">Lưới</text>`;
   s+=`<text x="${ix+iw+8}" y="${my-10}" font-size="11" fill="var(--mut)">AC 1 pha</text>`;
-  return s+'</svg>';
+  if(v.sys==='hyb')s+=acx(mid+34,'Tải backup');
+  return s+batS+'</svg>';
 }
 
 /* ---------- Cập nhật ---------- */
@@ -276,6 +301,7 @@ function update(){
   const r=build(v,c);
   $('stats').innerHTML=`<div><b>${F(c.kwp,2)} kWp</b><span>Tổng công suất</span></div><div><b>${v.n} tấm</b><span>${c.sizes.length} string</span></div><div><b>${r.show}/${v.n}</b><span>Tấm đặt vừa mái (${r.cols} × ${r.rows})</span></div>`+(r.show<v.n?`<div style="color:var(--wn)"><b>Thiếu chỗ</b><span>Mái chỉ đặt được ${r.cap} tấm</span></div>`:'');
   checks(v,c);
+  $('batf').hidden=v.sys==='grid';
   $('wire').innerHTML=wiring(v,c);LAST={v,c,r};renderRep();
   resize();placeCam();
 }
@@ -302,14 +328,14 @@ function rep(){
  const {v,c,r}=LAST,k=$('pre').value,pan=k==='x'?'Tấm '+F(v.wp)+' Wp':PRE[k].name;
  return [
  {t:'Thông số hệ thống',h:['Hạng mục','Giá trị'],w:[.34,.66],r:[
-  ['Khách hàng',$('cus').value||'(chưa nhập)'],['Tấm pin',pan],
+  ['Khách hàng',$('cus').value||'(chưa nhập)'],['Tấm pin',pan],['Kiểu hệ thống',SYS[v.sys]],
   ['Số tấm',v.n+' tấm × '+F(v.wp)+' Wp'],['Tổng công suất DC',F(c.kwp,2)+' kWp'],
-  ['Inverter',F(v.pac,1)+' kW, '+v.mn+' MPPT, Vdc tối đa '+F(v.vmax)+' V'],['Tỉ lệ DC/AC',F(c.kwp/v.pac,2)],
+  ['Inverter',F(v.pac,1)+' kW, '+v.mn+' MPPT, Vdc tối đa '+F(v.vmax)+' V'],['Tỉ lệ DC/AC',F(c.kwp/v.pac,2)],...(v.sys==='grid'?[]:[['Pin lưu trữ',v.bn+' × '+F(v.bk,2)+' kWh = '+F(v.bn*v.bk,1)+' kWh, '+F(v.bv,1)+' V, DoD '+F(v.bd)+'%']]),
   ['Mái nhà',F(v.rw,1)+' × '+F(v.rl,1)+' m, nghiêng '+F(v.tilt)+'°, đặt tấm '+(v.ori==='p'?'dọc':'ngang')],
   ['Tấm đặt vừa mái',r.show+'/'+v.n+' tấm ('+r.cols+' cột × '+r.rows+' hàng)']]},
  {t:'Chia string',h:['String','Số tấm','MPPT','Voc lạnh (V)','Vmp nóng (V)','Isc (A)'],w:[.14,.14,.14,.2,.2,.18],r:c.sizes.map((n,i)=>['S'+(i+1),n,'MPPT'+(i%v.mn+1),F(n*c.vocCold,1),F(n*c.vmpHot,1),F(v.isc,2)])},
  {t:'Kiểm tra điện áp và dòng',h:['Nội dung','Kết quả'],w:[.82,.18],r:CK.map(x=>[x.t,x.ok?'Đạt':'Cần xem lại'])},
- {t:'Vật tư chính (sơ bộ)',h:['Vật tư','Số lượng'],w:[.7,.3],r:[['Tấm pin '+pan,v.n+' tấm'],['Inverter '+F(v.pac,1)+' kW','1 bộ'],['CB DC (mỗi string 1 cái)',c.sizes.length+' cái'],['CB AC','1 cái'],['Công tơ 2 chiều','1 cái']]}
+ {t:'Vật tư chính (sơ bộ)',h:['Vật tư','Số lượng'],w:[.7,.3],r:[['Tấm pin '+pan,v.n+' tấm'],['Inverter '+(v.sys==='grid'?'hòa lưới':v.sys==='hyb'?'hybrid':'off-grid')+' '+F(v.pac,1)+' kW','1 bộ'],['CB DC (mỗi string 1 cái)',c.sizes.length+' cái'],['CB AC','1 cái'],...(v.sys==='grid'?[]:[['Pin lưu trữ '+F(v.bk,2)+' kWh',v.bn+' module'],['CB DC pin','1 cái']]),...(v.sys==='off'?[]:[['Công tơ 2 chiều','1 cái']])]}
  ];
 }
 function renderRep(){
@@ -344,7 +370,7 @@ async function pages(){
  const im=renderer.domElement,iw=PW-2*M;let dw=iw,dh=Math.round(iw*im.height/im.width);
  if(dh>700){dh=700;dw=Math.round(dh*im.width/im.height)}
  h.drawImage(im,M+(iw-dw)/2,110,dw,dh);
- const H=Math.max(LAST.c.sizes.length*56+50,230);
+ const H=Math.max(LAST.c.sizes.length*56+50,230)+(LAST.v.sys==='grid'?0:120);
  const svg=wiring(LAST.v,LAST.c).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ').replace(' width="100%"',' width="1000" height="'+H+'"').replace(/var\(--in\)/g,'#f7f9fa').replace(/var\(--card\)/g,'#ffffff').replace(/var\(--mut\)/g,'#5d6b76').replace(/currentColor/g,'#14212b');
  const img=new Image();
  await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)});
@@ -389,6 +415,7 @@ $('bpdf').onclick=async()=>{
  const js=await Promise.all(pg.map(cv=>new Promise(ok=>cv.toBlob(b=>b.arrayBuffer().then(ab=>ok({bytes:new Uint8Array(ab),w:cv.width,h:cv.height})),'image/jpeg',0.92))));
  saveFile('bao-cao-pin-mat-troi.pdf',pdf(js));
 };
+const SYS={grid:'Hòa lưới',hyb:'Hòa lưới kết hợp lưu trữ',off:'Lưu trữ độc lập (không lưới)'};
 applyPre();update();
 </script>
 </body>
