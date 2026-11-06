@@ -10,6 +10,7 @@
 :root[data-theme="dark"]{--bg:#0f171d;--card:#18232b;--tx:#e6edf1;--mut:#93a3ae;--bd:#2c3b46;--ok:#4cc38a;--wn:#ff8a80;--in:#101a20;color-scheme:dark}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 header{padding:18px 20px 6px;max-width:1280px;margin:auto}
 h1{font-size:22px;margin:0 0 2px;font-weight:700;letter-spacing:-.01em}
@@ -78,6 +79,9 @@ table.rp th{background:var(--in)}
 <label>Hệ số Voc (%/°C)<input id="tc" type="number" step="0.01" value="-0.26"></label>
 </div></fieldset>
 <fieldset><legend>Mái nhà</legend><div class="g">
+<label class="full">Kiểu lắp đặt<select id="mount"><option value="roof">Áp mái</option><option value="frame">Khung trụ sắt trên sân thượng</option></select></label>
+<label class="full" id="fhl" hidden>Chiều cao trụ thấp (m)<input id="fh" type="number" step="0.1" value="2.2"></label>
+<p class="note full" id="mnote" style="margin:0"></p>
 <label>Góc nghiêng (°)<input id="tilt" type="number" value="15" min="0" max="45"></label>
 <label>Cách đặt tấm<select id="ori"><option value="p">Dọc</option><option value="l">Ngang</option></select></label>
 <label>Chiều rộng mái (m)<input id="rw" type="number" step="0.1" value="12"></label>
@@ -110,6 +114,13 @@ table.rp th{background:var(--in)}
 <section class="card"><h2>Phối cảnh 3D</h2>
 <div class="stats" id="stats"></div>
 <div id="view" aria-label="Mô hình 3D mái nhà và tấm pin"></div>
+<div id="pctl" class="btns" hidden style="margin:10px 0 0;align-items:end">
+<label style="display:flex;gap:6px;align-items:center;margin:0 8px 6px 0"><input id="pm" type="checkbox" style="width:auto;margin:0">Ghép lên ảnh thực tế</label>
+<label style="min-width:140px">Dịch ngang<input id="px" type="range" min="-50" max="50" value="0"></label>
+<label style="min-width:140px">Dịch dọc<input id="py" type="range" min="-50" max="50" value="0"></label>
+<label style="min-width:140px">Độ đậm tấm pin<input id="po" type="range" min="20" max="100" value="85"></label>
+<p class="hint" style="flex-basis:100%;margin:0">Xoay và zoom khung 3D cho khớp góc chụp của ảnh, rồi dùng thanh dịch ngang, dịch dọc để căn tấm pin lên mái.</p>
+</div>
 <p class="hint">Kéo để xoay, cuộn hoặc chụm hai ngón để phóng to. Mỗi màu viền là một string.</p></section>
 <section class="card"><h2>Kiểm tra điện áp và dòng</h2><ul class="ck" id="ck"></ul></section>
 <section class="card sv"><h2>Sơ đồ đấu nối</h2><div id="wire"></div></section>
@@ -122,13 +133,13 @@ table.rp th{background:var(--in)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-const IDS=['wp','n','pw','ph','voc','vmp','isc','tc','tilt','rw','rl','pac','mn','vmax','mmin','imax','ns','tmin','thot','bn','bk','bv','bd','bl','bs'];
+const IDS=['wp','n','pw','ph','voc','vmp','isc','tc','tilt','rw','rl','pac','mn','vmax','mmin','imax','ns','tmin','thot','bn','bk','bv','bd','bl','bs','fh'];
 const PAL=['#f2a900','#2e9cca','#d6455d','#4cae6a','#8e6bd1','#e5702a','#17a398','#b5a600'];
 const F=(x,d=0)=>Number(x).toFixed(d);
 
 function read(){
   const v={};IDS.forEach(k=>v[k]=parseFloat($(k).value)||0);
-  v.ori=$('ori').value;v.sys=$('sys').value;
+  v.ori=$('ori').value;v.sys=$('sys').value;v.mount=$('mount').value;
   v.n=Math.max(1,Math.round(v.n));v.ns=Math.max(1,Math.round(v.ns));v.mn=Math.max(1,Math.round(v.mn));
   return v;
 }
@@ -225,6 +236,7 @@ function panelTex(col){
 
 function build(v,c){
   scene.remove(dyn);dyn=new THREE.Group();scene.add(dyn);
+  if(v.mount==='frame')return buildFrame(v,c);
   const W=v.rw,L=v.rl,th=v.tilt*Math.PI/180,H=3;
   const D=L*Math.cos(th),rise=L*Math.sin(th);
   // thân nhà
@@ -232,10 +244,10 @@ function build(v,c){
   sh.moveTo(-D/2,0);sh.lineTo(D/2,0);sh.lineTo(D/2,H);sh.lineTo(-D/2,H+rise);sh.lineTo(-D/2,0);
   const gw=new THREE.ExtrudeGeometry(sh,{depth:W,bevelEnabled:false});
   gw.rotateY(-Math.PI/2);gw.translate(W/2,0,0);
-  dyn.add(new THREE.Mesh(gw,new THREE.MeshLambertMaterial({color:0xd9d4c7})));
+  {const m=new THREE.Mesh(gw,new THREE.MeshLambertMaterial({color:0xd9d4c7}));m.userData.base=1;dyn.add(m);}
   // mái
   const roof=new THREE.Group();roof.position.set(0,H+rise/2+0.04,0);roof.rotation.x=th;dyn.add(roof);
-  roof.add(new THREE.Mesh(new THREE.BoxGeometry(W+0.3,0.08,L+0.3),new THREE.MeshLambertMaterial({color:0x8a4b3c})));
+  {const m=new THREE.Mesh(new THREE.BoxGeometry(W+0.3,0.08,L+0.3),new THREE.MeshLambertMaterial({color:0x8a4b3c}));m.userData.base=1;roof.add(m);}
   // tấm pin
   const g=0.02,m=0.3;
   let a=v.pw/1000,b=v.ph/1000;if(v.ori==='l'){[a,b]=[b,a]}
@@ -256,6 +268,32 @@ function build(v,c){
   }
   const wd=Math.max(W,D)+4;cam3.t.set(0,H+rise/2,0);cam3.r=Math.max(14,wd*1.5);
   return {cap,show,cols,rows};
+}
+
+function buildFrame(v,c){
+  const W=v.rw,Dp=v.rl,H=3,hF=Math.max(0.5,v.fh),th=v.tilt*Math.PI/180,g=0.02,m=0.15;
+  let a=v.pw/1000,b=v.ph/1000;if(v.ori==='l'){[a,b]=[b,a]}
+  const mk=(w,h,d,col,x,y,z,base)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color:col}));o.position.set(x,y,z);if(base)o.userData.base=1;dyn.add(o);return o};
+  mk(W,H,Dp,0xe3e0d8,0,H/2,0,1);
+  [-1,1].forEach(s=>{mk(W,0.7,0.15,0xf4f4f2,0,H+0.35,s*(Dp/2-0.075),1);mk(0.15,0.7,Dp,0xf4f4f2,s*(W/2-0.075),H+0.35,0,1)});
+  const cols=Math.max(0,Math.floor((W-2*m+g)/(a+g))),rows=Math.max(0,Math.floor(((Dp-0.3)/Math.cos(th)+g)/(b+g)));
+  const Lp=Math.max(rows,1)*(b+g)+0.1,Wu=Math.max(cols,1)*(a+g),cap=cols*rows,show=Math.min(v.n,cap);
+  const proj=Lp*Math.cos(th),rise=Lp*Math.sin(th);
+  const pl=new THREE.Group();pl.position.set(0,H+hF+rise/2,0);pl.rotation.x=th;dyn.add(pl);
+  const steel=0xaab4bb,nx=Math.max(2,Math.ceil(Wu/3)+1);
+  for(let i=0;i<nx;i++){const x=-Wu/2+0.15+i*(Wu-0.3)/(nx-1);
+    mk(0.1,hF,0.1,steel,x,H+hF/2,proj/2);mk(0.1,hF+rise,0.1,steel,x,H+(hF+rise)/2,-proj/2)}
+  mk(Wu,0.1,0.1,steel,0,H+hF,proj/2);mk(Wu,0.1,0.1,steel,0,H+hF+rise,-proj/2);
+  const sm=new THREE.MeshLambertMaterial({color:steel});
+  for(let i=0;i<=cols;i++){const r=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.06,Lp),sm);r.position.set(-cols*(a+g)/2+i*(a+g),-0.05,0);pl.add(r)}
+  const frame=new THREE.MeshLambertMaterial({color:0xb9c2c9});
+  for(let i=0;i<show;i++){const rr=Math.floor(i/cols),cc=i%cols;
+    const top=new THREE.MeshLambertMaterial({map:panelTex(PAL[c.strOf[i]%PAL.length])});
+    const p=new THREE.Mesh(new THREE.BoxGeometry(a,0.04,b),[frame,frame,top,frame,frame,frame]);
+    p.position.set(-cols*(a+g)/2+g/2+a/2+cc*(a+g),0,Lp/2-0.05-b/2-rr*(b+g));pl.add(p)}
+  if(v.sys!=='grid'){mk(0.8,1.6,0.5,0x2e7d5b,-W/2+0.8,H+0.8,-Dp/2+0.5);mk(0.6,0.7,0.25,0xe5e9ec,-W/2+0.8,H+2.0,-Dp/2+0.5)}
+  cam3.t.set(0,H+1.5,0);cam3.r=Math.max(14,(Math.max(W,Dp)+4)*1.5);
+  return {cap,show,cols,rows,posts:nx*2,rails:cols+1};
 }
 
 /* ---------- Sơ đồ đấu nối ---------- */
@@ -302,14 +340,16 @@ function update(){
   $('stats').innerHTML=`<div><b>${F(c.kwp,2)} kWp</b><span>Tổng công suất</span></div><div><b>${v.n} tấm</b><span>${c.sizes.length} string</span></div><div><b>${r.show}/${v.n}</b><span>Tấm đặt vừa mái (${r.cols} × ${r.rows})</span></div>`+(r.show<v.n?`<div style="color:var(--wn)"><b>Thiếu chỗ</b><span>Mái chỉ đặt được ${r.cap} tấm</span></div>`:'');
   checks(v,c);
   $('batf').hidden=v.sys==='grid';
+  $('fhl').hidden=v.mount!=='frame';
+  $('mnote').textContent=v.mount==='frame'?'Khung trụ sắt trên sân thượng: nhập rộng × sâu của sân thượng bên dưới, tấm nghiêng theo góc đã nhập.':'';
   $('wire').innerHTML=wiring(v,c);LAST={v,c,r};renderRep();
-  resize();placeCam();
+  applyPhoto();resize();placeCam();
 }
 document.querySelectorAll('input[type=number],select').forEach(e=>e.addEventListener('input',update));
 $('img').addEventListener('change',e=>{
   const f=e.target.files[0],p=$('photo');
-  if(!f){p.style.display='none';return}
-  p.src=URL.createObjectURL(f);p.style.display='block';
+  if(!f){p.style.display='none';PURL=PIMG=null;$('pctl').hidden=true;applyPhoto();placeCam();return}
+  PURL=URL.createObjectURL(f);p.src=PURL;p.style.display='block';PIMG=new Image();PIMG.src=PURL;$('pctl').hidden=false;$('pm').checked=true;applyPhoto();placeCam();
 });
 /* ---------- Mẫu tấm pin ---------- */
 const PRE={
@@ -328,14 +368,14 @@ function rep(){
  const {v,c,r}=LAST,k=$('pre').value,pan=k==='x'?'Tấm '+F(v.wp)+' Wp':PRE[k].name;
  return [
  {t:'Thông số hệ thống',h:['Hạng mục','Giá trị'],w:[.34,.66],r:[
-  ['Khách hàng',$('cus').value||'(chưa nhập)'],['Tấm pin',pan],['Kiểu hệ thống',SYS[v.sys]],
+  ['Khách hàng',$('cus').value||'(chưa nhập)'],['Tấm pin',pan],['Kiểu hệ thống',SYS[v.sys]],['Kiểu lắp đặt',v.mount==='frame'?'Khung trụ sắt trên sân thượng, trụ thấp '+F(v.fh,1)+' m':'Áp mái'],
   ['Số tấm',v.n+' tấm × '+F(v.wp)+' Wp'],['Tổng công suất DC',F(c.kwp,2)+' kWp'],
   ['Inverter',F(v.pac,1)+' kW, '+v.mn+' MPPT, Vdc tối đa '+F(v.vmax)+' V'],['Tỉ lệ DC/AC',F(c.kwp/v.pac,2)],...(v.sys==='grid'?[]:[['Pin lưu trữ',v.bn+' × '+F(v.bk,2)+' kWh = '+F(v.bn*v.bk,1)+' kWh, '+F(v.bv,1)+' V, DoD '+F(v.bd)+'%']]),
   ['Mái nhà',F(v.rw,1)+' × '+F(v.rl,1)+' m, nghiêng '+F(v.tilt)+'°, đặt tấm '+(v.ori==='p'?'dọc':'ngang')],
   ['Tấm đặt vừa mái',r.show+'/'+v.n+' tấm ('+r.cols+' cột × '+r.rows+' hàng)']]},
  {t:'Chia string',h:['String','Số tấm','MPPT','Voc lạnh (V)','Vmp nóng (V)','Isc (A)'],w:[.14,.14,.14,.2,.2,.18],r:c.sizes.map((n,i)=>['S'+(i+1),n,'MPPT'+(i%v.mn+1),F(n*c.vocCold,1),F(n*c.vmpHot,1),F(v.isc,2)])},
  {t:'Kiểm tra điện áp và dòng',h:['Nội dung','Kết quả'],w:[.82,.18],r:CK.map(x=>[x.t,x.ok?'Đạt':'Cần xem lại'])},
- {t:'Vật tư chính (sơ bộ)',h:['Vật tư','Số lượng'],w:[.7,.3],r:[['Tấm pin '+pan,v.n+' tấm'],['Inverter '+(v.sys==='grid'?'hòa lưới':v.sys==='hyb'?'hybrid':'off-grid')+' '+F(v.pac,1)+' kW','1 bộ'],['CB DC (mỗi string 1 cái)',c.sizes.length+' cái'],['CB AC','1 cái'],...(v.sys==='grid'?[]:[['Pin lưu trữ '+F(v.bk,2)+' kWh',v.bn+' module'],['CB DC pin','1 cái']]),...(v.sys==='off'?[]:[['Công tơ 2 chiều','1 cái']])]}
+ {t:'Vật tư chính (sơ bộ)',h:['Vật tư','Số lượng'],w:[.7,.3],r:[['Tấm pin '+pan,v.n+' tấm'],...(v.mount==='frame'?[['Trụ thép (khung đỡ)',r.posts+' trụ'],['Xà gồ đỡ tấm',r.rails+' thanh']]:[]),['Inverter '+(v.sys==='grid'?'hòa lưới':v.sys==='hyb'?'hybrid':'off-grid')+' '+F(v.pac,1)+' kW','1 bộ'],['CB DC (mỗi string 1 cái)',c.sizes.length+' cái'],['CB AC','1 cái'],...(v.sys==='grid'?[]:[['Pin lưu trữ '+F(v.bk,2)+' kWh',v.bn+' module'],['CB DC pin','1 cái']]),...(v.sys==='off'?[]:[['Công tơ 2 chiều','1 cái']])]}
  ];
 }
 function renderRep(){
@@ -369,7 +409,9 @@ async function pages(){
  draw();
  const im=renderer.domElement,iw=PW-2*M;let dw=iw,dh=Math.round(iw*im.height/im.width);
  if(dh>700){dh=700;dw=Math.round(dh*im.width/im.height)}
- h.drawImage(im,M+(iw-dw)/2,110,dw,dh);
+ const ox=M+(iw-dw)/2;
+ if(OV()&&PIMG){const k=Math.max(dw/PIMG.width,dh/PIMG.height),qw=PIMG.width*k,qh=PIMG.height*k;h.save();h.beginPath();h.rect(ox,110,dw,dh);h.clip();h.drawImage(PIMG,ox+(dw-qw)/2,110+(dh-qh)/2,qw,qh);h.globalAlpha=$('po').value/100;h.drawImage(im,ox+dw*$('px').value/100,110+dh*$('py').value/100,dw,dh);h.restore()}
+ else h.drawImage(im,ox,110,dw,dh);
  const H=Math.max(LAST.c.sizes.length*56+50,230)+(LAST.v.sys==='grid'?0:120);
  const svg=wiring(LAST.v,LAST.c).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ').replace(' width="100%"',' width="1000" height="'+H+'"').replace(/var\(--in\)/g,'#f7f9fa').replace(/var\(--card\)/g,'#ffffff').replace(/var\(--mut\)/g,'#5d6b76').replace(/currentColor/g,'#14212b');
  const img=new Image();
@@ -415,6 +457,18 @@ $('bpdf').onclick=async()=>{
  const js=await Promise.all(pg.map(cv=>new Promise(ok=>cv.toBlob(b=>b.arrayBuffer().then(ab=>ok({bytes:new Uint8Array(ab),w:cv.width,h:cv.height})),'image/jpeg',0.92))));
  saveFile('bao-cao-pin-mat-troi.pdf',pdf(js));
 };
+/* ---------- Ghép ảnh thực tế ---------- */
+let PURL=null,PIMG=null;
+const OV=()=>!!(PURL&&$('pm').checked);
+function applyPhoto(){
+ const ov=OV(),cv=renderer.domElement;
+ ground.visible=!ov;
+ dyn.traverse(o=>{if(o.userData.base)o.visible=!ov});
+ view.style.background=ov?'url('+PURL+') center/cover no-repeat':'';
+ cv.style.transform=ov?'translate('+$('px').value+'%,'+$('py').value+'%)':'';
+ cv.style.opacity=ov?$('po').value/100:'';
+}
+['pm','px','py','po'].forEach(id=>$(id).addEventListener('input',()=>{applyPhoto();placeCam()}));
 const SYS={grid:'Hòa lưới',hyb:'Hòa lưới kết hợp lưu trữ',off:'Lưu trữ độc lập (không lưới)'};
 applyPre();update();
 </script>
