@@ -54,6 +54,7 @@ table.rp caption{text-align:left;font-weight:700;padding:4px 0}
 table.rp th,table.rp td{border:1px solid var(--bd);padding:5px 8px;text-align:left;vertical-align:top}
 table.rp th{background:var(--in)}
 .note{font-size:12px;color:var(--mut);margin:6px 0 0}
+[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -97,12 +98,35 @@ table.rp th{background:var(--in)}
 <label>Giờ nắng quy đổi (h/ngày)<input id="bs" type="number" step="0.1" value="4"></label>
 </div></fieldset>
 <fieldset><legend>Inverter</legend><div class="g">
+<label class="full">Mẫu inverter (Deye)<select id="ipre"></select></label><p class="note full" id="inote" style="margin:0"></p>
 <label>Công suất AC (kW)<input id="pac" type="number" step="0.1" value="10"></label>
 <label>Số MPPT<input id="mn" type="number" value="2" min="1" max="4"></label>
 <label>Vdc tối đa (V)<input id="vmax" type="number" value="600"></label>
 <label>MPPT thấp nhất (V)<input id="mmin" type="number" value="150"></label>
 <label>Isc tối đa / MPPT (A)<input id="imax" type="number" value="22"></label>
 <label>Số tấm / string<input id="ns" type="number" value="10" min="1" max="20"></label>
+</div></fieldset>
+<fieldset><legend>Tiền điện và hiệu quả đầu tư</legend><div class="g">
+<label class="full">Đối tượng dùng điện (biểu giá EVN từ 01/11/2026)<select id="ct"><option value="sh">Sinh hoạt (5 bậc)</option><option value="lt">Kinh doanh: lưu trú du lịch, trung áp trở lên</option><option value="sc">Kinh doanh: trạm sạc xe điện, trung áp trở lên</option><option value="kd">Kinh doanh: dịch vụ khác, trung áp trở lên</option><option value="sx">Sản xuất, cao áp từ 220 kV</option><option value="tn">Tự nhập đơn giá giờ</option></select></label>
+<label class="res">Điện tiêu thụ / tháng (kWh)<input id="ek" type="number" value="600" min="0"></label>
+<label class="res">Số hộ dùng điện (hộ)<input id="eh" type="number" value="1" min="1"></label>
+<label class="tou" hidden>Giờ bình thường (kWh/tháng)<input id="ebt" type="number" value="0" min="0"></label>
+<label class="tou" hidden>Đơn giá giờ bình thường (đ/kWh)<input id="pbt" type="number" value="0"></label>
+<label class="tou" hidden>Giờ cao điểm (kWh/tháng)<input id="ecd" type="number" value="0" min="0"></label>
+<label class="tou" hidden>Đơn giá giờ cao điểm (đ/kWh)<input id="pcd" type="number" value="0"></label>
+<label class="tou" hidden>Giờ thấp điểm (kWh/tháng)<input id="etd" type="number" value="0" min="0"></label>
+<label class="tou" hidden>Đơn giá giờ thấp điểm (đ/kWh)<input id="ptd" type="number" value="0"></label>
+<label>VAT (%)<input id="evat" type="number" value="8" min="0"></label>
+<label>Giờ nắng quy đổi (h/ngày)<input id="esun" type="number" step="0.1" value="4"></label>
+<label>Hiệu suất hệ thống (%)<input id="epr" type="number" value="80"></label>
+<label>Tỉ lệ điện mặt trời dùng tại chỗ (%)<input id="esu" type="number" value="70"></label>
+<label class="full">Số tiền điện hàng tháng (đồng, đã gồm VAT). Nhập số này để tính ngược ra kWh<input id="ebill" type="number" value="0" min="0"></label>
+<label class="tou" hidden>Tỉ trọng giờ cao điểm (%)<input id="ecdp" type="number" value="20"></label>
+<label class="tou" hidden>Tỉ trọng giờ thấp điểm (%)<input id="etdp" type="number" value="20"></label>
+<label>Mục tiêu bù điện tiêu thụ (%)<input id="etg" type="number" value="70"></label>
+<label>Tỉ lệ điện dùng ban đêm (%), để tính pin<input id="enight" type="number" value="40"></label>
+<label class="full">Giá trị báo giá (triệu đồng, để tính hoàn vốn)<input id="ecost" type="number" value="0" min="0"></label>
+<p class="note full" style="margin:0">Điện mặt trời được trừ vào bậc cao nhất (sinh hoạt). Với kinh doanh và sản xuất theo khung giờ mới từ 01/11/2026 (cao điểm 17h30–22h30, thấp điểm 0h–6h), điện mặt trời chỉ bù được giờ bình thường (6h–17h30). Không tính bán điện lên lưới. Hệ có pin lưu trữ nên tăng tỉ lệ dùng tại chỗ. Điền VAT theo hóa đơn thực tế.</p>
 </div></fieldset>
 <fieldset style="margin:0"><legend>Nhiệt độ tính toán</legend><div class="g">
 <label>Thấp nhất (°C)<input id="tmin" type="number" value="15"></label>
@@ -124,6 +148,7 @@ table.rp th{background:var(--in)}
 <p class="hint">Kéo để xoay, cuộn hoặc chụm hai ngón để phóng to. Mỗi màu viền là một string.</p></section>
 <section class="card"><h2>Kiểm tra điện áp và dòng</h2><ul class="ck" id="ck"></ul></section>
 <section class="card sv"><h2>Sơ đồ đấu nối</h2><div id="wire"></div></section>
+<section class="card"><h2>Gợi ý giải pháp lắp điện mặt trời</h2><div id="sug"></div></section>
 <section class="card"><h2>Bảng tổng hợp thiết kế</h2>
 <div class="btns"><button id="bpng">Tải ảnh PNG</button><button id="bpdf" class="alt">Tải file PDF</button></div>
 <div id="rep"></div><p class="note" id="dnote">File gồm 2 trang A4: các bảng ở trang 1, phối cảnh 3D và sơ đồ đấu nối ở trang 2.</p></section>
@@ -166,6 +191,7 @@ function checks(v,c){
   const pm=Math.max(...c.par);
   add(pm*v.isc<=v.imax,`Dòng Isc tại MPPT đông nhất: ${pm} string × ${F(v.isc,2)} A = ${F(pm*v.isc,1)} A (giới hạn ${F(v.imax)} A).`);
   const ratio=c.kwp/v.pac;
+  const im=IP();if(im)add(pm<=im.sp,`${im.name}: mỗi MPPT có ${im.sp} đầu vào string, MPPT đông nhất đang nối ${pm} string.`);
   add(ratio>=0.9&&ratio<=1.4,`Tổng ${F(c.kwp,2)} kWp trên inverter ${F(v.pac,1)} kW, tỉ lệ DC/AC ${F(ratio,2)} (thường chọn 1,0 đến 1,3).`);
   add(new Set(c.sizes).size===1,c.sizes.length===1?'Chỉ có 1 string.':`Các string ${new Set(c.sizes).size===1?'đều':'không đều'} số tấm (${c.sizes.join(' / ')}). Nên chia đều để MPPT làm việc ổn định.`);
   if(v.sys!=='grid'){
@@ -362,15 +388,179 @@ function applyPre(){const p=PRE[$('pre').value];if(p.wp)PF.forEach(k=>$(k).value
 $('pre').addEventListener('change',()=>{applyPre();update()});
 PF.forEach(k=>$(k).addEventListener('input',()=>{$('pre').value='x';$('pnote').textContent=PRE.x.note}));
 
+/* ---------- Mẫu inverter Deye (theo datasheet hãng, deyeinverter.com) ---------- */
+const DYU='https://vi.deyeinverter.com/deyeinverter/',DYP='https://vi.deyeinverter.com/product/';
+const DG={
+ g05:{t:'grid',mn:2,sp:1,vmax:550,mmin:70,mhi:500,imax:27,vs:80,vr:360,imp:18,eff:'97,3 - 97,5% (Euro 96,9 - 97,0%)',tmp:'-25 đến 60 °C, giảm công suất khi trên 45 °C',ip:'IP65',cool:'Tự nhiên',dim:'305 × 280 × 180 mm',kg:'7,7 kg',wr:'5 năm',
+  ds:DYU+'2025/05/21/%E3%80%90b%E3%80%91datasheet_sun-3.6-6.2k-g05p1-eu-am2_30240102202344_20250520_en.pdf',
+  pg:DYP+'single-phase-string-inverter/SUN3-6-4-4-2-4-6-5-5-2-6-6-2KG04P1EUAM2P1-3-66-2kW-Single-Phase-2-MPPT-2332.html'},
+ g02:{t:'grid',mn:2,sp:2,vmax:550,mmin:70,mhi:500,imax:39,vs:80,vr:360,imp:26,eff:'97,7% (Euro 97,2%)',tmp:'-25 đến 60 °C, giảm công suất khi trên 45 °C',ip:'IP65',cool:'Tự nhiên',dim:'330 × 410 × 213,5 mm',kg:'14,8 kg',wr:'5 năm',
+  ds:DYU+'2025/05/21/%E3%80%90b%E3%80%91datasheet_sun-9-10.5k-g02p1-eu-am2_30240102202508_20250520_en.pdf',
+  pg:DYP+'single-phase-string-inverter/sun7-7-5-8-9-10-10-5kg-710-5kw-single-phase-2-mppt.html'},
+ h04:{t:'hyb',mn:2,sp:1,vmax:500,mmin:150,mhi:425,imax:27,vs:125,vr:370,imp:18,eff:'97,6% (Euro 96,5%)',tmp:'-40 đến 60 °C, giảm công suất khi trên 45 °C',ip:'IP65',cool:'Tự nhiên',dim:'376 × 470 × 241,5 mm',kg:'17,6 - 19 kg',wr:'5 năm / 10 năm (theo công trình lắp đặt)',
+  ds:DYU+'2025/05/29/%E3%80%90b%E3%80%91datasheet_sun-3-6K-SG04LP1-SM1_30240102201655_20250520_EN.PDF',
+  pg:DYP+'single-phase-low-voltage-hybrid-inverter/SUN3-3-6-5-6KSG04LP1EU-36kW-Single-Phase-2-MPPT-Hybrid-Inverter-LV-Battery-Supported-2346.html'}
+};
+const hx=(a,b)=>'PV tối đa theo trang Deye: '+a+' W và '+b+' W (2 dòng, cần đối chiếu datasheet PDF). Dòng sạc/xả pin tối đa 140 A, ghép song song tối đa 16 máy.';
+const DM=(g,name,pac,kva,ir,im,pv,ex)=>Object.assign({},DG[g],{name,pac,kva,ir,im,pv,ex});
+const IPRE={
+ 'g05-36':DM('g05','Deye SUN-3.6K-G05P1-EU-AM2',3.6,'3,96','16,4/15,7','18/17,3','5,4 kW'),
+ 'g05-4':DM('g05','Deye SUN-4K-G05P1-EU-AM2',4,'4,4','18,2/17,4','20/19,2','6 kW'),
+ 'g05-5':DM('g05','Deye SUN-5K-G05P1-EU-AM2',5,'5,5','22,8/21,8','25/24','7,5 kW'),
+ 'g05-6':DM('g05','Deye SUN-6K-G05P1-EU-AM2',6,'6,6','27,3/26,1','30/28,7','9 kW'),
+ 'g05-62':DM('g05','Deye SUN-6.2K-G05P1-EU-AM2',6.2,'6,82','28,2/27','31/29,7','9,3 kW'),
+ 'g02-9':DM('g02','Deye SUN-9K-G02P1-EU-AM2',9,'9,9','41/39,2','45/43,1','13,5 kW'),
+ 'g02-10':DM('g02','Deye SUN-10K-G02P1-EU-AM2',10,'11','45,5/43,5','50/47,9','15 kW'),
+ 'g02-105':DM('g02','Deye SUN-10.5K-G02P1-EU-AM2',10.5,'11,55','47,8/45,7','52,5/50,3','15,8 kW'),
+ 'h04-36':DM('h04','Deye SUN-3.6K-SG04LP1-EU-SM2',3.6,'3,96','16,4/15,7','18/17,3',null,hx('7.200','5.760')),
+ 'h04-5':DM('h04','Deye SUN-5K-SG04LP1-EU-SM2',5,'5,5','22,8/21,8','25/24',null,hx('10.000','8.000')),
+ 'h04-6':DM('h04','Deye SUN-6K-SG04LP1-EU-SM2',6,'6,6','27,3/26,1','30/28,7',null,hx('12.000','9.600'))
+};
+const IP=()=>IPRE[$('ipre').value];
+const IF=['pac','mn','vmax','mmin','imax'];
+function showIpre(){
+ const m=IP(),n=$('inote');
+ if(!m){n.textContent='Nhập thông số theo datasheet của inverter.';return}
+ n.innerHTML='Theo datasheet Deye: '+m.mn+' MPPT, '+m.sp+' string/MPPT, Vdc tối đa '+m.vmax+' V, MPPT '+m.mmin+' - '+m.mhi+' V, Isc tối đa '+m.imax+' A/MPPT. <a href="'+m.ds+'" target="_blank" rel="noopener">Datasheet PDF</a> · <a href="'+m.pg+'" target="_blank" rel="noopener">Trang sản phẩm</a>';
+}
+function buildIpre(){
+ const want=$('sys').value==='grid'?'grid':'hyb',sel=$('ipre'),cur=sel.value;
+ sel.innerHTML='<option value="x">Tự nhập</option><optgroup label="Deye '+(want==='grid'?'hòa lưới (string)':'hybrid một pha, pin LV')+'">'+Object.keys(IPRE).filter(k=>IPRE[k].t===want).map(k=>'<option value="'+k+'">'+IPRE[k].name+'</option>').join('')+'</optgroup>';
+ sel.value=IPRE[cur]&&IPRE[cur].t===want?cur:'x';showIpre();
+}
+function irows(m){
+ const r=[['Model',m.name],['Loại',m.t==='hyb'?'Hybrid một pha, hỗ trợ pin LV':'Hòa lưới một pha (string)'],
+  ['Công suất AC định mức',F(m.pac,1)+' kW, tối đa '+m.kva+' kVA'],
+  ['Dòng AC (220/230 V)','Định mức '+m.ir+' A, tối đa '+m.im+' A']];
+ if(m.pv)r.push(['Công suất PV đầu vào tối đa',m.pv]);
+ r.push(['Điện áp PV tối đa / khởi động',m.vmax+' V / '+m.vs+' V'],
+  ['Dải MPPT / PV định mức',m.mmin+' - '+m.mhi+' V / '+m.vr+' V'],
+  ['Số MPPT / string mỗi MPPT',m.mn+' MPPT, '+m.sp+' string/MPPT'],
+  ['Dòng PV tối đa / Isc tối đa mỗi MPPT',m.imp+' A / '+m.imax+' A'],
+  ['Hiệu suất tối đa',m.eff],
+  ['Cấp bảo vệ / nhiệt độ làm việc',m.ip+'; '+m.tmp],
+  ['Làm mát / kích thước / khối lượng',m.cool+'; '+m.dim+'; '+m.kg],
+  ['Bảo hành',m.wr]);
+ if(m.ex)r.push(['Ghi chú datasheet',m.ex]);
+ r.push(['Nguồn','Datasheet hãng Deye, deyeinverter.com']);
+ return r;
+}
+$('ipre').addEventListener('change',()=>{const m=IP();if(m)IF.forEach(k=>$(k).value=m[k]);showIpre();update()});
+IF.forEach(k=>$(k).addEventListener('input',()=>{if($('ipre').value!=='x'){$('ipre').value='x';showIpre()}}));
+$('sys').addEventListener('change',()=>{buildIpre();update()});
+
+/* ---------- Tiền điện EVN (áp dụng từ 01/11/2026) và hiệu quả đầu tư ---------- */
+const TIER=[[100,1901],[100,2289],[200,2894],[300,3456],[Infinity,3844]];
+const TOU={
+ lt:{n:'Kinh doanh, lưu trú du lịch, trung áp trở lên',bt:1814,td:1166,cd:3348},
+ sc:{n:'Kinh doanh, trạm sạc xe điện, trung áp trở lên',bt:2549,td:1534,cd:3758},
+ kd:{n:'Kinh doanh, dịch vụ khác, trung áp trở lên',bt:2829,td:1577,cd:4924},
+ sx:{n:'Sản xuất, cao áp từ 220 kV',bt:1771,td:1101,cd:3110}
+};
+const NF=n=>Math.round(n).toLocaleString('vi-VN');
+const nv=id=>parseFloat($(id).value)||0;
+function tierBill(k,h){let r=Math.max(0,k);return TIER.map(([w,p],i)=>{const u=Math.max(0,Math.min(r,w*h));r-=u;return {l:'Bậc '+(i+1),p,u,a:u*p}})}
+function elecTables(){
+ const ct=$('ct').value,vp=nv('evat'),vat=vp/100,h=Math.max(1,Math.round(nv('eh'))),c=LAST.c;
+ const gen=c.kwp*nv('esun')*30*nv('epr')/100,self=gen*nv('esu')/100;
+ let rb,ra,cons,off,name;
+ if(ct==='sh'){
+  cons=ECONS();if(cons<=0)return [];
+  off=Math.min(self,cons);name='Sinh hoạt 5 bậc, '+h+' hộ';
+  rb=tierBill(cons,h);ra=tierBill(cons-off,h);
+ }else{
+  const P={bt:nv('pbt'),cd:nv('pcd'),td:nv('ptd')},K=EK();
+  cons=K.bt+K.cd+K.td;if(cons<=0)return [];
+  off=Math.min(self,K.bt);name=ct==='tn'?'Tự nhập đơn giá giờ':TOU[ct].n;
+  const A={bt:K.bt-off,cd:K.cd,td:K.td};
+  const L={bt:'Giờ bình thường',cd:'Giờ cao điểm',td:'Giờ thấp điểm'};
+  const mk=S=>['bt','cd','td'].map(k=>({l:L[k],p:P[k],u:S[k],a:S[k]*P[k]}));
+  rb=mk(K);ra=mk(A);
+ }
+ const sum=(R,k)=>R.reduce((x,y)=>x+y[k],0),sb=sum(rb,'a'),sa=sum(ra,'a');
+ const vb=sb*(1+vat),va=sa*(1+vat),sav=vb-va,cost=nv('ecost')*1e6,yr=sav*12;
+ const pay=cost>0&&yr>0?F(cost/yr,1)+' năm ('+F(cost/yr*12)+' tháng)':cost>0?'Không hoàn vốn (không tiết kiệm được)':'Chưa nhập giá trị báo giá';
+ const t1={t:'Tiền điện và hiệu quả đầu tư',h:['Hạng mục','Giá trị'],w:[.3,.7],pg:3,r:[
+  ['Biểu giá áp dụng',name+'. Biểu giá EVN từ 01/11/2026'],
+  ['Điện năng tiêu thụ',NF(cons)+' kWh/tháng'+(nv('ebill')>0?' (tính ngược từ tiền điện '+NF(nv('ebill'))+' đ đã gồm VAT)':'')],
+  ['Điện mặt trời ước tính',NF(gen)+' kWh/tháng ('+F(c.kwp,2)+' kWp × '+F(nv('esun'),1)+' giờ × 30 ngày × '+F(nv('epr'))+'%)'],
+  ['Điện mặt trời dùng tại chỗ',NF(off)+' kWh/tháng (tỉ lệ dùng tại chỗ '+F(nv('esu'))+'%)'],
+  ['Tiền điện trước khi lắp',NF(vb)+' đ/tháng (đã gồm VAT '+F(vp,0)+'%)'],
+  ['Tiền điện sau khi lắp',NF(va)+' đ/tháng (đã gồm VAT '+F(vp,0)+'%)'],
+  ['Tiết kiệm',NF(sav)+' đ/tháng, khoảng '+NF(yr)+' đ/năm'],
+  ['Giá trị báo giá',cost>0?NF(cost)+' đ':'Chưa nhập'],
+  ['Thời gian hoàn vốn (đơn giản)',pay]]};
+ const t2={t:'Chi tiết tiền điện trước và sau khi lắp điện mặt trời',h:[ct==='sh'?'Bậc':'Khung giờ','Đơn giá (đ/kWh)','Trước (kWh)','Thành tiền (đ)','Sau (kWh)','Thành tiền (đ)'],w:[.2,.15,.15,.2,.15,.15],pg:3,
+  r:rb.map((x,i)=>[x.l,NF(x.p),NF(x.u),NF(x.a),NF(ra[i].u),NF(ra[i].a)]).concat([
+   ['Cộng','',NF(sum(rb,'u')),NF(sb),NF(sum(ra,'u')),NF(sa)],
+   ['VAT '+F(vp,0)+'%','','',NF(sb*vat),'',NF(sa*vat)],
+   ['Tổng thanh toán','','',NF(vb),'',NF(va)]])};
+ return [t1,t2];
+}
+function revKwh(){
+ const ct=$('ct').value,vat=nv('evat')/100,h=Math.max(1,Math.round(nv('eh')));
+ let pre=nv('ebill')/(1+vat);
+ if(ct==='sh'){let k=0;for(const [w,p] of TIER){const cap=w*h*p;if(pre<=cap){k+=pre/p;break}pre-=cap;k+=w*h}return k}
+ const cd=nv('ecdp')/100,td=nv('etdp')/100,avg=(1-cd-td)*nv('pbt')+cd*nv('pcd')+td*nv('ptd');
+ return avg>0?pre/avg:0;
+}
+const EK=()=>{if(nv('ebill')>0){const k=revKwh(),cd=nv('ecdp')/100,td=nv('etdp')/100;return {bt:k*(1-cd-td),cd:k*cd,td:k*td}}return {bt:nv('ebt'),cd:nv('ecd'),td:nv('etd')}};
+const ECONS=()=>{if(nv('ebill')>0)return revKwh();if($('ct').value==='sh')return nv('ek');const k=EK();return k.bt+k.cd+k.td};
+function suggest(){
+ const cons=ECONS();if(!(cons>0)||!LAST)return null;
+ const v=read(),want=v.sys==='grid'?'grid':'hyb',tg=nv('etg')/100,su=nv('esu')/100,per=nv('esun')*30*nv('epr')/100;
+ if(per<=0||su<=0||v.wp<=0)return null;
+ const cb=$('ct').value==='sh'?cons:EK().bt,kwp0=tg*cb/su/per,gen=kwp0*per;
+ const ks=Object.keys(IPRE).filter(k=>IPRE[k].t===want).sort((a,b)=>IPRE[a].pac-IPRE[b].pac);
+ let key=ks.find(k=>kwp0/IPRE[k].pac<=1.3),units=1;
+ if(!key){key=ks[ks.length-1];units=Math.ceil(kwp0/(IPRE[key].pac*1.3))}
+ const m=IPRE[key],ku=kwp0/units;
+ const vocC=v.voc*(1+v.tc/100*(v.tmin-25)),vmpH=v.vmp*(1-0.0035*(v.thot-25));
+ const maxN=Math.floor(m.vmax/vocC),minN=Math.ceil(m.mmin/vmpH),n0=Math.max(1,Math.ceil(ku*1000/v.wp));
+ let n=n0,S=m.mn,ok=false;const cand=[];
+ for(let q=Math.max(1,n0-3);q<=n0+8;q++)for(let t=m.mn;t<=m.mn*m.sp;t+=m.mn){const x=q/t;if(Number.isInteger(x)&&x<=maxN&&x>=minN&&(t/m.mn)*v.isc<=m.imax)cand.push({q,t,r:q*v.wp/1000/m.pac})}
+ cand.sort((a,b)=>(a.r>1.35)-(b.r>1.35)||Math.abs(a.q-n0)-Math.abs(b.q-n0)||b.q-a.q);
+ if(cand.length){n=cand[0].q;S=cand[0].t;ok=true}
+ const ns=Math.ceil(n/S),kwp=n*v.wp/1000;
+ let bat=0,bn=0;
+ if(want==='hyb'&&v.bd>0&&v.bk>0){bat=cons/30*nv('enight')/100/(v.bd/100);bn=Math.ceil(bat/v.bk)}
+ return {cons,kwp0,gen,key,m,units,n,S,ns,ok,kwp,ratio:kwp/m.pac,bat,bn,maxN,minN,v,want};
+}
+function sugData(g){
+ const v=g.v,bill=nv('ebill'),r=[];
+ r.push(['Điện tiêu thụ ước tính',(bill>0?'Tiền điện '+NF(bill)+' đ/tháng (đã gồm VAT '+F(nv('evat'),0)+'%), tính ngược ra ':'')+NF(g.cons)+' kWh/tháng, khoảng '+F(g.cons/30,1)+' kWh/ngày']);
+ r.push(['Mục tiêu',$('ct').value==='sh'?'Bù khoảng '+F(nv('etg'),0)+'% điện tiêu thụ bằng điện mặt trời dùng tại chỗ':'Bù khoảng '+F(nv('etg'),0)+'% điện giờ bình thường (6h–17h30). Giờ cao điểm 17h30–22h30 và thấp điểm 0h–6h cần pin lưu trữ hoặc mua lưới']);
+ r.push(['Công suất DC cần','Khoảng '+F(g.kwp0,1)+' kWp, sản lượng khoảng '+NF(g.gen)+' kWh/tháng']);
+ r.push(['Tấm pin đề xuất',(g.units>1?g.units+' bộ, mỗi bộ ':'')+g.n+' tấm × '+F(v.wp)+' Wp = '+F(g.kwp*g.units,2)+' kWp']);
+ r.push(['Inverter đề xuất',(g.units>1?g.units+' × ':'')+g.m.name+' ('+F(g.m.pac,1)+' kW), tỉ lệ DC/AC '+F(g.ratio,2)]);
+ r.push(['Chia string',g.S+' string × '+g.ns+' tấm, '+g.m.mn+' MPPT'+(g.ok?'':'. Chưa chia đều được, cần xem lại số tấm hoặc inverter')]);
+ if(g.want==='hyb')r.push(['Pin lưu trữ gợi ý','Khoảng '+F(g.bat,1)+' kWh dùng được, tương đương '+g.bn+' module × '+F(v.bk,2)+' kWh (tải ban đêm '+F(nv('enight'),0)+'% điện tiêu thụ)']);
+ return r;
+}
+function sugRows(){if(!(nv('ebill')>0))return null;const g=suggest();return g?{t:'Cơ sở đề xuất giải pháp',h:['Hạng mục','Nội dung'],w:[.3,.7],pg:3,r:sugData(g)}:null}
+function renderSug(){
+ const g=suggest(),el=$('sug');
+ if(!g){el.innerHTML='<p class="note">Nhập tiền điện hàng tháng hoặc điện tiêu thụ để có gợi ý.</p>';return}
+ el.innerHTML='<table class="rp"><tbody>'+sugData(g).map(r=>'<tr><td><b>'+esc(r[0])+'</b></td><td>'+esc(r[1])+'</td></tr>').join('')+'</tbody></table>'+
+  (g.units>1?'<p class="note">Công suất lớn hơn một inverter trong danh sách. App thiết kế cho 1 bộ, số tấm và vật tư nhân với '+g.units+'.</p>':'')+
+  '<div class="btns"><button id="bsug">Áp dụng đề xuất vào thiết kế</button></div><p class="note">Đề xuất sơ bộ theo giờ nắng, hiệu suất và tỉ lệ dùng tại chỗ đã nhập. Cần đối chiếu diện tích mái và khảo sát thực tế.</p>';
+}
+function applySug(){const g=suggest();if(!g)return;$('n').value=g.n;$('ns').value=g.ns;$('ipre').value=g.key;IF.forEach(k=>$(k).value=g.m[k]);if(g.bn)$('bn').value=g.bn;showIpre();update()}
+$('sug').addEventListener('click',e=>{if(e.target.id==='bsug')applySug()});
+
+function showCt(){const sh=$('ct').value==='sh';document.querySelectorAll('.res').forEach(e=>e.hidden=!sh);document.querySelectorAll('.tou').forEach(e=>e.hidden=sh)}
+$('ct').addEventListener('change',()=>{const t=TOU[$('ct').value];if(t){$('pbt').value=t.bt;$('pcd').value=t.cd;$('ptd').value=t.td}showCt();update()});
+
 /* ---------- Bảng tổng hợp và xuất file ---------- */
 const esc=s=>String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
-function rep(){
+function rep(){const t=rep0(),m=IP();const sg=sugRows();if(sg)t.push(sg);t.push(...elecTables());if(m)t.push({t:'Datasheet inverter '+m.name,h:['Thông số','Giá trị'],w:[.34,.66],r:irows(m),pg:4});return t}
+function rep0(){
  const {v,c,r}=LAST,k=$('pre').value,pan=k==='x'?'Tấm '+F(v.wp)+' Wp':PRE[k].name;
  return [
  {t:'Thông số hệ thống',h:['Hạng mục','Giá trị'],w:[.34,.66],r:[
   ['Khách hàng',$('cus').value||'(chưa nhập)'],['Tấm pin',pan],['Kiểu hệ thống',SYS[v.sys]],['Kiểu lắp đặt',v.mount==='frame'?'Khung trụ sắt trên sân thượng, trụ thấp '+F(v.fh,1)+' m':'Áp mái'],
   ['Số tấm',v.n+' tấm × '+F(v.wp)+' Wp'],['Tổng công suất DC',F(c.kwp,2)+' kWp'],
-  ['Inverter',F(v.pac,1)+' kW, '+v.mn+' MPPT, Vdc tối đa '+F(v.vmax)+' V'],['Tỉ lệ DC/AC',F(c.kwp/v.pac,2)],...(v.sys==='grid'?[]:[['Pin lưu trữ',v.bn+' × '+F(v.bk,2)+' kWh = '+F(v.bn*v.bk,1)+' kWh, '+F(v.bv,1)+' V, DoD '+F(v.bd)+'%']]),
+  ['Inverter',(IP()?IP().name+', ':'')+F(v.pac,1)+' kW, '+v.mn+' MPPT, Vdc tối đa '+F(v.vmax)+' V'],['Tỉ lệ DC/AC',F(c.kwp/v.pac,2)],...(v.sys==='grid'?[]:[['Pin lưu trữ',v.bn+' × '+F(v.bk,2)+' kWh = '+F(v.bn*v.bk,1)+' kWh, '+F(v.bv,1)+' V, DoD '+F(v.bd)+'%']]),
   ['Mái nhà',F(v.rw,1)+' × '+F(v.rl,1)+' m, nghiêng '+F(v.tilt)+'°, đặt tấm '+(v.ori==='p'?'dọc':'ngang')],
   ['Tấm đặt vừa mái',r.show+'/'+v.n+' tấm ('+r.cols+' cột × '+r.rows+' hàng)']]},
  {t:'Chia string',h:['String','Số tấm','MPPT','Voc lạnh (V)','Vmp nóng (V)','Isc (A)'],w:[.14,.14,.14,.2,.2,.18],r:c.sizes.map((n,i)=>['S'+(i+1),n,'MPPT'+(i%v.mn+1),F(n*c.vocCold,1),F(n*c.vmpHot,1),F(v.isc,2)])},
@@ -380,6 +570,9 @@ function rep(){
 }
 function renderRep(){
  $('rep').innerHTML=rep().map(s=>'<table class="rp"><caption>'+s.t+'</caption><thead><tr>'+s.h.map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+s.r.map(r=>'<tr>'+r.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>').join('');
+ renderSug();
+ const R=rep(),np=2+[3,4].filter(g=>R.some(q=>q.pg===g)).length;
+ $('dnote').textContent='File gồm '+np+' trang A4: các bảng ở trang 1, phối cảnh 3D và sơ đồ đấu nối ở trang 2'+(np>2?', phụ lục tiền điện và datasheet inverter ở các trang sau.':'.');
 }
 const PW=1240,PH=1754,M=70,FT='system-ui,Segoe UI,Arial,sans-serif';
 function wrap(g,t,mw){const out=[];String(t).split('\n').forEach(par=>{let l='';par.split(' ').forEach(w=>{const k=l?l+' '+w:w;if(g.measureText(k).width>mw&&l){out.push(l);l=w}else l=k});out.push(l)});return out}
@@ -402,7 +595,7 @@ async function pages(){
  const a=newPage(),g=a.g;
  g.fillStyle='#14212b';g.font='700 34px '+FT;g.fillText('BÁO CÁO THIẾT KẾ ĐIỆN MẶT TRỜI',M,50);
  g.fillStyle='#5d6b76';g.font='400 20px '+FT;g.fillText(cus+'   |   '+new Date().toLocaleDateString('vi-VN'),M,96);
- let y=150;S.forEach(s=>{y=drawTable(g,y,s)});
+ let y=150;S.filter(s=>!s.pg).forEach(s=>{y=drawTable(g,y,s)});
  g.fillStyle='#5d6b76';g.font='400 16px '+FT;g.fillText('Số liệu tính toán sơ bộ, cần đối chiếu datasheet và tiêu chuẩn trước khi thi công.',M,PH-60);
  const b=newPage(),h=b.g;
  h.fillStyle='#14212b';h.font='700 34px '+FT;h.fillText('Phối cảnh 3D và sơ đồ đấu nối',M,50);
@@ -419,7 +612,10 @@ async function pages(){
  const y2=110+dh+40;let sw=iw,sh=Math.round(iw*H/1000);
  if(y2+sh>PH-50){sh=PH-50-y2;sw=Math.round(sh*1000/H)}
  h.drawImage(img,M,y2,sw,sh);
- return [a.cv,b.cv];
+ const grp=[[3,'Tiền điện và hiệu quả đầu tư'],[4,'Datasheet inverter']].map(([n,t])=>[S.filter(q=>q.pg===n),t]).filter(x=>x[0].length);
+ const out=[a.cv,b.cv];
+ grp.forEach(([ts,t])=>{const pp=newPage(),k=pp.g;k.fillStyle='#14212b';k.font='700 34px '+FT;k.fillText(t,M,50);let yy=110;ts.forEach(q=>{yy=drawTable(k,yy,q)});k.fillStyle='#5d6b76';k.font='400 16px '+FT;k.fillText('Số liệu ước tính sơ bộ, cần đối chiếu biểu giá EVN, datasheet hãng và hiện trạng trước khi thi công.',M,PH-60);out.push(pp.cv)});
+ return out;
 }
 function pdf(js){
  const enc=s=>new TextEncoder().encode(s),parts=[],xr=[];let off=0;
@@ -448,8 +644,8 @@ async function saveFile(name,data){
  }catch(e){if(!e||e.code!=='declined')note.textContent='Không tải được file ('+((e&&e.code)||'lỗi')+'). Anh thử lại giúp em.'}
 }
 $('bpng').onclick=async()=>{
- const [a,b]=await pages(),cv=document.createElement('canvas');cv.width=PW;cv.height=PH*2;
- const g=cv.getContext('2d');g.drawImage(a,0,0);g.drawImage(b,0,PH);
+ const pg=await pages(),cv=document.createElement('canvas');cv.width=PW;cv.height=PH*pg.length;
+ const g=cv.getContext('2d');pg.forEach((q,i)=>g.drawImage(q,0,PH*i));
  cv.toBlob(bl=>saveFile('bao-cao-pin-mat-troi.png',bl),'image/png');
 };
 $('bpdf').onclick=async()=>{
@@ -470,7 +666,7 @@ function applyPhoto(){
 }
 ['pm','px','py','po'].forEach(id=>$(id).addEventListener('input',()=>{applyPhoto();placeCam()}));
 const SYS={grid:'Hòa lưới',hyb:'Hòa lưới kết hợp lưu trữ',off:'Lưu trữ độc lập (không lưới)'};
-applyPre();update();
+applyPre();buildIpre();showCt();update();
 </script>
 </body>
 </html>
