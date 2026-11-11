@@ -639,9 +639,13 @@ async function saveFile(name,data){
  const note=$('dnote');
  try{
   const d=window.claude&&await window.claude.use('downloads');
-  if(!d){note.textContent='Trình xem này chưa hỗ trợ tải file. Anh mở trang trong claude.ai để tải.';return}
-  await d.save({filename:name,data});
- }catch(e){if(!e||e.code!=='declined')note.textContent='Không tải được file ('+((e&&e.code)||'lỗi')+'). Anh thử lại giúp em.'}
+  if(d){await d.save({filename:name,data});return}
+ }catch(e){if(e&&e.code==='declined')return}
+ try{
+  const u=URL.createObjectURL(data),a=document.createElement('a');
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),5000);
+ }catch(e){note.textContent='Không tải được file. Anh thử lại giúp em.'}
 }
 $('bpng').onclick=async()=>{
  const pg=await pages(),cv=document.createElement('canvas');cv.width=PW;cv.height=PH*pg.length;
